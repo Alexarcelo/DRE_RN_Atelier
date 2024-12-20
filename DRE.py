@@ -3,6 +3,10 @@ import json
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import gspread 
+from google.cloud import secretmanager 
+import json
+from google.oauth2.service_account import Credentials
 
 def listar_api(url_api, call_api, titulo_json):
 
@@ -184,6 +188,8 @@ def atualizar_omie():
 
     st.session_state.df_vendas_mensais = gerar_df_vendas_mensais(st.session_state.df_pedidos)
 
+    st.session_state.df_vendas_mensais = st.session_state.df_vendas_mensais[st.session_state.df_vendas_mensais['ano']>=2024].reset_index(drop=True)
+
     st.session_state.df_vendas_mensais = inserir_trimestres(st.session_state.df_vendas_mensais)
 
     st.session_state.df_vendas_anuais = st.session_state.df_vendas_mensais.groupby('ano')['valor_total_pedido'].sum().reset_index()
@@ -347,8 +353,71 @@ def grafico_linha_percentual(referencia, eixo_x, eixo_y_1, ref_1_label, titulo):
     st.pyplot(fig)
     plt.close(fig)
 
+def puxar_aba_simples(id_gsheet, nome_aba, nome_df):
+
+    nome_credencial = st.secrets["CREDENCIAL_SHEETS"]
+    credentials = service_account.Credentials.from_service_account_info(nome_credencial)
+    scope = ['https://www.googleapis.com/auth/spreadsheets']
+    credentials = credentials.with_scopes(scope)
+    client = gspread.authorize(credentials)
+
+    spreadsheet = client.open_by_key(id_gsheet)
+    
+    sheet = spreadsheet.worksheet(nome_aba)
+
+    sheet_data = sheet.get_all_values()
+
+    st.session_state[nome_df] = pd.DataFrame(sheet_data[1:], columns=sheet_data[0])
+
+def tratar_df_receitas_gsheet():
+
+    st.session_state.df_receitas_gsheet['data'] = pd.to_datetime(st.session_state.df_receitas_gsheet['data'], format='%d/%m/%Y').dt.date
+
+    st.session_state.df_receitas_gsheet['ano'] = pd.to_numeric(st.session_state.df_receitas_gsheet['ano'])
+
+    st.session_state.df_receitas_gsheet['mes'] = pd.to_numeric(st.session_state.df_receitas_gsheet['mes'])
+
+    st.session_state.df_receitas_gsheet['valor'] = pd.to_numeric(st.session_state.df_receitas_gsheet['valor'].str.replace(',', '.'))
+
+    st.session_state.df_receitas_gsheet = st.session_state.df_receitas_gsheet.rename(columns={'valor': 'valor_total_pedido'})
+
+    st.session_state.df_receitas_gsheet = inserir_trimestres(st.session_state.df_receitas_gsheet)
+
+    st.session_state.df_receitas_gsheet['mes/ano'] = pd.to_datetime(st.session_state.df_receitas_gsheet['ano'].astype(str) + '-' + 
+                                                                    st.session_state.df_receitas_gsheet['mes'].astype(str)).dt.to_period('M')
+
+def concatenar_vendas_gsheet_omie():
+
+    df_receitas_gsheet_mensais = st.session_state.df_receitas_gsheet.groupby(['ano', 'mes', 'mes/ano', 'trimestre', 'tri/ano'])['valor_total_pedido'].sum().reset_index()
+
+    st.session_state.df_vendas_mensais = st.session_state.df_vendas_mensais[st.session_state.df_vendas_mensais['ano']>=2024].reset_index(drop=True)
+
+    st.session_state.df_vendas_mensais = pd.concat([df_receitas_gsheet_mensais, st.session_state.df_vendas_mensais], ignore_index=True)
+
+def puxar_receitas_gsheet():
+
+    puxar_aba_simples(st.session_state.id_gsheet, 'BD - Receitas', 'df_receitas_gsheet')
+
+    tratar_df_receitas_gsheet()
+
+    concatenar_vendas_gsheet_omie()
+
 st.set_page_config(layout='wide')
 
+st.session_state.id_gsheet = '1P9g1KZKJ2h2SbWliHB1FEzf1KmST7Q-EKr3TLICVJK8'
+
+if not 'df_categorias' in st.session_state:
+
+    with st.apinner('Puxando dados do OMIE...'):
+
+        atualizar_omie()
+
+if not 'df_receitas_gsheet' in st.session_state:
+
+    with st.spinner('Puxando dados do Google Drive...'):
+
+        puxar_receitas_gsheet()
+    
 dict_meses = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
 
 st.title('DRE | RN Atelier - OMIE')
@@ -361,21 +430,33 @@ row2 = st.columns(2)
 
 row3 = st.columns(1)
 
-if not 'df_categorias' in st.session_state:
-
-    atualizar_omie()
-
 with row1[0]:
 
-    atualizar_dados_omie = st.button('Atualizar Dados OMIE')
+    row1_1 = st.columns(2)
+
+    with row1_1[0]:
+
+        atualizar_dados_omie = st.button('Atualizar Dados OMIE')
+
+    with row1_1[1]:
+
+        atualizar_gsheet = st.button('Atualizar Dados Google Drive')
 
 if atualizar_dados_omie:
 
-    atualizar_omie()
+    with st.spinner('Puxando dados do OMIE...'):
+
+        atualizar_omie()
+
+if atualizar_gsheet:
+
+    with st.spinner('Puxando dados do Google Drive...'):
+
+        puxar_receitas_gsheet()
 
 with row1[0]:
 
-    botao_anos = st.multiselect('Anos', range(2024, 2031), default=None)
+    botao_anos = st.multiselect('Anos', range(2021, 2031), default=None)
 
     botao_mes_atual = st.selectbox('Mês de Análise', range(1, 13), index=None)
 
@@ -392,9 +473,9 @@ if botao_anos and analise and analise=='Vendas Gerais':
 
     with row2[0]:
 
-        grafico_linha_RS(df_vendas_mensais_filtro_ano, 'mes/ano', 'valor_total_pedido', 'Vendas', f"Vendas Mensais | {' '.join(map(str, botao_anos))}")
+        grafico_linha_RS(df_vendas_mensais_filtro_ano, 'mes/ano', 'valor_total_pedido', 'Vendas', f"Vendas Mensais | {' | '.join(map(str, botao_anos))}")
 
-        grafico_linha_RS(df_vendas_trimestrais, 'tri/ano', 'valor_total_pedido', 'Vendas', f"Vendas Trimestrais | {' '.join(map(str, botao_anos))}")
+        grafico_linha_RS(df_vendas_trimestrais, 'tri/ano', 'valor_total_pedido', 'Vendas', f"Vendas Trimestrais | {' | '.join(map(str, botao_anos))}")
 
     with row3[0]:
 
@@ -441,10 +522,10 @@ elif botao_anos and analise and analise=='Margens | Bruta vs Operacional vs Líq
         df_grafico_trimestral = df_dre_trimestrais[(df_dre_trimestrais['ml']!=1) & (df_dre_trimestrais['ano'].isin(botao_anos))].reset_index(drop=True)
 
         grafico_tres_linhas_percentual(df_grafico_mensal, 'mes/ano', 'margem_bruta', 'Margem Bruta', 'margem_operacional', 'Margem Operacional', 'margem_liquida', 'Margem Líquida', 
-                                       f"Margens Mensais | {' '.join(map(str, botao_anos))}")
+                                       f"Margens Mensais | {' | '.join(map(str, botao_anos))}")
 
         grafico_tres_linhas_percentual(df_grafico_trimestral, 'tri/ano', 'mb', 'Margem Bruta', 'mo', 'Margem Operacional', 'ml', 'Margem Líquida', 
-                                       f"Margens Trimestrais | {' '.join(map(str, botao_anos))}")
+                                       f"Margens Trimestrais | {' | '.join(map(str, botao_anos))}")
         
     with row3[0]:
 
@@ -482,10 +563,10 @@ elif botao_anos and analise and analise=='Despesas Gerais':
         df_grafico_trimestral = df_dre_trimestrais[(df_dre_trimestrais['cpv']!=0) & (df_dre_trimestrais['ano'].isin(botao_anos))].reset_index(drop=True)
 
         grafico_quatro_linhas_RS(df_grafico_mensal, 'mes/ano', 'cpv', 'CPV', 'do', 'Despesas Operacionais', 'df_apenas_financeiras', 'Despesas Financeiras', 'impostos', 
-                                       'Impostos', f"Despesas Mensais | {' '.join(map(str, botao_anos))}")
+                                       'Impostos', f"Despesas Mensais | {' | '.join(map(str, botao_anos))}")
 
         grafico_quatro_linhas_RS(df_grafico_trimestral, 'tri/ano', 'cpv', 'CPV', 'do', 'Despesas Operacionais', 'df_apenas_financeiras', 'Despesas Financeiras', 'impostos', 
-                                       'Impostos', f"Despesas Mensais | {' '.join(map(str, botao_anos))}")
+                                       'Impostos', f"Despesas Mensais | {' | '.join(map(str, botao_anos))}")
         
     with row3[0]:
 
@@ -536,21 +617,21 @@ elif botao_anos and analise and (analise=='Margem Bruta' or analise=='Margem Ope
 
         if analise=='Margem Bruta':
 
-            grafico_linha_percentual(df_grafico_mensal, 'mes/ano', 'margem_bruta', 'Margem Bruta', f"Margens Brutas Mensais | {' '.join(map(str, botao_anos))}")
+            grafico_linha_percentual(df_grafico_mensal, 'mes/ano', 'margem_bruta', 'Margem Bruta', f"Margens Brutas Mensais | {' | '.join(map(str, botao_anos))}")
 
-            grafico_linha_percentual(df_grafico_trimestral, 'tri/ano', 'mb', 'Margem Bruta', f"Margens Brutas Trimestrais | {' '.join(map(str, botao_anos))}")
+            grafico_linha_percentual(df_grafico_trimestral, 'tri/ano', 'mb', 'Margem Bruta', f"Margens Brutas Trimestrais | {' | '.join(map(str, botao_anos))}")
 
         elif analise=='Margem Operacional':
 
-            grafico_linha_percentual(df_grafico_mensal, 'mes/ano', 'margem_operacional', 'Margem Operacional', f"Margens Operacionais Mensais | {' '.join(map(str, botao_anos))}")
+            grafico_linha_percentual(df_grafico_mensal, 'mes/ano', 'margem_operacional', 'Margem Operacional', f"Margens Operacionais Mensais | {' | '.join(map(str, botao_anos))}")
 
-            grafico_linha_percentual(df_grafico_trimestral, 'tri/ano', 'mo', 'Margem Operacional', f"Margens Operacionais Trimestrais | {' '.join(map(str, botao_anos))}")
+            grafico_linha_percentual(df_grafico_trimestral, 'tri/ano', 'mo', 'Margem Operacional', f"Margens Operacionais Trimestrais | {' | '.join(map(str, botao_anos))}")
 
         elif analise=='Margem Líquida':
 
-            grafico_linha_percentual(df_grafico_mensal, 'mes/ano', 'margem_liquida', 'Margem Líquida', f"Margens Líquidas Mensais | {' '.join(map(str, botao_anos))}")
+            grafico_linha_percentual(df_grafico_mensal, 'mes/ano', 'margem_liquida', 'Margem Líquida', f"Margens Líquidas Mensais | {' | '.join(map(str, botao_anos))}")
 
-            grafico_linha_percentual(df_grafico_trimestral, 'tri/ano', 'ml', 'Margem Líquida', f"Margens Líquidas Trimestrais | {' '.join(map(str, botao_anos))}")
+            grafico_linha_percentual(df_grafico_trimestral, 'tri/ano', 'ml', 'Margem Líquida', f"Margens Líquidas Trimestrais | {' | '.join(map(str, botao_anos))}")
 
     with row3[0]:
 
@@ -660,9 +741,9 @@ elif botao_anos and analise and (analise=='CPV' or analise=='Despesas Operaciona
 
         with row2[0]:
 
-            grafico_linha_RS(df_ref_categoria, 'mes/ano', 'valor_documento', categoria_analise, f"Despesas Mensais {categoria_analise} | {' '.join(map(str, botao_anos))}")
+            grafico_linha_RS(df_ref_categoria, 'mes/ano', 'valor_documento', categoria_analise, f"Despesas Mensais {categoria_analise} | {' | '.join(map(str, botao_anos))}")
 
-            grafico_linha_RS(df_ref_categoria_trimestrais, 'tri/ano', 'valor_documento', categoria_analise, f"Despesas Trimestrais {categoria_analise} | {' '.join(map(str, botao_anos))}")
+            grafico_linha_RS(df_ref_categoria_trimestrais, 'tri/ano', 'valor_documento', categoria_analise, f"Despesas Trimestrais {categoria_analise} | {' | '.join(map(str, botao_anos))}")
 
         with row3[0]:
 
@@ -695,3 +776,54 @@ elif botao_anos and analise and analise=='Cálculo de Ponto de Equilíbrio':
     def_ref_peq['ponto_equilibrio'] = (def_ref_peq['do'] + def_ref_peq['df'] - def_ref_peq['despesas_n_recorrentes']) / (def_ref_peq['margem_bruta'] - (aliquota_imposto/100))
 
     grafico_linha_RS(def_ref_peq, 'mes/ano', 'ponto_equilibrio', 'Ponto de Equilíbrio', 'Ponto de Equilíbrio Mensal')
+
+elif botao_anos and analise and analise=='Folha':
+
+    lista_despesas_folha = ['FGTS', 'Férias', 'INSS', 'Salários', 'Vale Alimentação', 'Vale Transporte', '13º Salário']
+
+    df_folha = st.session_state.df_despesas_mensais[(st.session_state.df_despesas_mensais['descricao'].isin(lista_despesas_folha)) & 
+                                                    (st.session_state.df_despesas_mensais['ano'].isin(botao_anos))].reset_index(drop=True)
+    
+    df_folha_mensal = df_folha.groupby(['ano', 'mes', 'mes/ano', 'trimestre', 'tri/ano'])['valor_documento'].sum().reset_index()
+
+    df_folha_trimestral = df_folha.groupby(['tri/ano', 'ano', 'trimestre'])[['valor_documento']].sum().reset_index()
+
+    df_folha_anual = df_folha.groupby(['ano'])[['valor_documento']].sum().reset_index()
+
+    with row2[0]:
+
+        grafico_linha_RS(df_folha_mensal, 'mes/ano', 'valor_documento', 'Folha', f"Folha Mensal | {' | '.join(map(str, botao_anos))}")
+
+        grafico_linha_RS(df_folha_trimestral, 'tri/ano', 'valor_documento', 'Folha', f"Folha Mensal | {' | '.join(map(str, botao_anos))}")
+
+    with row3[0]:
+
+        grafico_linha_RS(df_folha_anual, 'ano', 'valor_documento', 'Folha', f"Folha Anual")
+
+    if botao_mes_atual:
+
+        df_folha_mes_atual = st.session_state.df_despesas_mensais[(st.session_state.df_despesas_mensais['descricao'].isin(lista_despesas_folha)) & 
+                                                                  (st.session_state.df_despesas_mensais['mes']==botao_mes_atual)].reset_index(drop=True)
+        
+        df_folha_mensal = df_folha_mes_atual.groupby(['ano', 'mes', 'mes/ano', 'trimestre', 'tri/ano'])['valor_documento'].sum().reset_index()
+
+        tri_atual = st.session_state.df_dre.loc[st.session_state.df_dre['mes']==botao_mes_atual, 'trimestre'].iloc[0].astype(int)
+
+        df_folha_tri_atual = st.session_state.df_despesas_mensais[(st.session_state.df_despesas_mensais['descricao'].isin(lista_despesas_folha)) & 
+                                                                  (st.session_state.df_despesas_mensais['trimestre']==tri_atual)].reset_index(drop=True)
+
+        df_folha_trimestral = df_folha_tri_atual.groupby(['tri/ano', 'ano', 'trimestre'])[['valor_documento']].sum().reset_index()
+
+        with row2[1]:
+
+            grafico_linha_RS(df_folha_mensal, 'mes/ano', 'valor_documento', 'Folha', f'Folha Mensal | {dict_meses[botao_mes_atual]}')
+            
+            grafico_linha_RS(df_folha_trimestral, 'tri/ano', 'valor_documento', 'Folha', f'Folha Trimestral | {tri_atual}T')
+
+elif botao_anos and analise and analise=='Impostos':
+
+    df_dre_mensais_filtro_ano = st.session_state.df_dre[(st.session_state.df_dre['ano'].isin(botao_anos)) & (st.session_state.df_dre['impostos']!=0)].reset_index(drop=True)
+
+    with row3[0]:
+
+        grafico_linha_RS(df_dre_mensais_filtro_ano, 'mes/ano', 'impostos', 'Impostos', f"Impostos Mensal")
