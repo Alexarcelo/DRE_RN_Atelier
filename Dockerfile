@@ -22,4 +22,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copie todo o conteúdo do diretório local para o contêiner
 COPY . .
 
-CMD ["streamlit", "run", "DRE.py", "--server.port=8102"]
+CMD ["streamlit", "run", "DRE.py", "--server.port=8080"]
