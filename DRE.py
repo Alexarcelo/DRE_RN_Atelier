@@ -413,7 +413,7 @@ st.session_state.id_gsheet = '1P9g1KZKJ2h2SbWliHB1FEzf1KmST7Q-EKr3TLICVJK8'
 
 if not 'df_categorias' in st.session_state:
 
-    with st.apinner('Puxando dados do OMIE...'):
+    with st.spinner('Puxando dados do OMIE...'):
 
         atualizar_omie()
 
