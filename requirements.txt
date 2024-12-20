@@ -10,3 +10,4 @@ fastjsonschema==2.20.0
 jsonschema==4.22.0
 google-auth==2.34.0
 google-auth-oauthlib==1.2.0
+gspread==6.1.2
