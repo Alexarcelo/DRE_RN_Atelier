@@ -149,7 +149,7 @@ if not 'df_contratos' in st.session_state:
 
         st.session_state.df_contratos = puxar_dados_contratos()
 
-        st.session_state.df_contratos = st.session_state.df_contratos[~pd.isna(st.session_state.df_contratos[''])].reset_index(drop=True)
+        st.session_state.df_contratos = st.session_state.df_contratos[~pd.isna(st.session_state.df_contratos[' '])].reset_index(drop=True)
 
         st.session_state.df_ficha_clientes = puxar_dados_ficha_clientes()
 
