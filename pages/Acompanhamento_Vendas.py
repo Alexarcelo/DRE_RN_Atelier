@@ -185,102 +185,102 @@ if atualizar_notion:
 
         st.session_state.df_ficha_clientes['Cliente'] = st.session_state.df_ficha_clientes['Cliente'].str.strip()
 
-df_contratos_fc = pd.merge(st.session_state.df_contratos[['Valor de Venda', 'Mês', 'Status', 'Cliente']], st.session_state.df_ficha_clientes, on='Cliente', how='left')
+    df_contratos_fc = pd.merge(st.session_state.df_contratos[['Valor de Venda', 'Mês', 'Status', 'Cliente']], st.session_state.df_ficha_clientes, on='Cliente', how='left')
 
-# Filtrar Mês
+    # Filtrar Mês
 
-with row2[0]:
+    with row2[0]:
 
-    filtro_mes = st.multiselect('Filtrar Mês', sorted(df_contratos_fc['Mês'].dropna().unique()), default=None)
+        filtro_mes = st.multiselect('Filtrar Mês', sorted(df_contratos_fc['Mês'].dropna().unique()), default=None)
 
-    if filtro_mes:
+        if filtro_mes:
 
-        df_contratos_fc = df_contratos_fc[df_contratos_fc['Mês'].isin(filtro_mes)].reset_index(drop=True)
+            df_contratos_fc = df_contratos_fc[df_contratos_fc['Mês'].isin(filtro_mes)].reset_index(drop=True)
 
-# Filtrar Status
+    # Filtrar Status
 
-with row2[1]:
+    with row2[1]:
 
-    filtro_status = st.multiselect('Filtrar Status', sorted(df_contratos_fc['Status'].dropna().unique()), default=None)
+        filtro_status = st.multiselect('Filtrar Status', sorted(df_contratos_fc['Status'].dropna().unique()), default=None)
+
+        if filtro_status:
+
+            df_contratos_fc = df_contratos_fc[df_contratos_fc['Status'].isin(filtro_status)].reset_index(drop=True)
+
+    df_contratos_fc['Valor de Venda'] = df_contratos_fc['Valor de Venda'].fillna(0)
+
+    ordem_meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+
+    with row_2_5[0]:
+
+        valor_total = format_currency(df_contratos_fc['Valor de Venda'].sum(), 'BRL', locale='pt_BR')
+
+        st.markdown(
+            f"""
+            <h1 style="text-align: center;">Valor Total Geral = {valor_total}</h1>
+            """,
+            unsafe_allow_html=True
+        )
+
+    coluna = 0
 
     if filtro_status:
 
-        df_contratos_fc = df_contratos_fc[df_contratos_fc['Status'].isin(filtro_status)].reset_index(drop=True)
+        for status in filtro_status:
 
-df_contratos_fc['Valor de Venda'] = df_contratos_fc['Valor de Venda'].fillna(0)
+            with row3[coluna]:
 
-ordem_meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+                container_dataframe = st.container(border=True)
 
-with row_2_5[0]:
+                container_dataframe.subheader(status)
 
-    valor_total = format_currency(df_contratos_fc['Valor de Venda'].sum(), 'BRL', locale='pt_BR')
+                valor_total = format_currency(df_contratos_fc[df_contratos_fc['Status']==status]['Valor de Venda'].sum(), 'BRL', locale='pt_BR')
 
-    st.markdown(
-        f"""
-        <h1 style="text-align: center;">Valor Total Geral = {valor_total}</h1>
-        """,
-        unsafe_allow_html=True
-    )
+                container_dataframe.subheader(f'Valor Total = {valor_total}')
 
-coluna = 0
+                df_contratos_fc['Mês'] = pd.Categorical(df_contratos_fc['Mês'], categories=ordem_meses, ordered=True)
 
-if filtro_status:
+                df_tabela = df_contratos_fc.copy()
 
-    for status in filtro_status:
+                df_tabela['Valor de Venda'] = df_tabela['Valor de Venda'].apply(lambda x: format_currency(x, 'BRL', locale='pt_BR'))
 
-        with row3[coluna]:
+                container_dataframe.dataframe(df_tabela[df_tabela['Status']==status][['Cliente', 'Mês', 'Valor de Venda']].sort_values(by='Mês'), hide_index=True)
 
-            container_dataframe = st.container(border=True)
+            if coluna != 2:
 
-            container_dataframe.subheader(status)
+                coluna+=1
 
-            valor_total = format_currency(df_contratos_fc[df_contratos_fc['Status']==status]['Valor de Venda'].sum(), 'BRL', locale='pt_BR')
+            else:
 
-            container_dataframe.subheader(f'Valor Total = {valor_total}')
+                coluna = 0
 
-            df_contratos_fc['Mês'] = pd.Categorical(df_contratos_fc['Mês'], categories=ordem_meses, ordered=True)
+    else:
 
-            df_tabela = df_contratos_fc.copy()
+        for status in sorted(df_contratos_fc['Status'].dropna().unique()):
 
-            df_tabela['Valor de Venda'] = df_tabela['Valor de Venda'].apply(lambda x: format_currency(x, 'BRL', locale='pt_BR'))
+            with row3[coluna]:
 
-            container_dataframe.dataframe(df_tabela[df_tabela['Status']==status][['Cliente', 'Mês', 'Valor de Venda']].sort_values(by='Mês'), hide_index=True)
+                container_dataframe = st.container(border=True)
 
-        if coluna != 2:
+                container_dataframe.subheader(status)
 
-            coluna+=1
+                valor_total = format_currency(df_contratos_fc[df_contratos_fc['Status']==status]['Valor de Venda'].sum(), 'BRL', locale='pt_BR')
 
-        else:
+                container_dataframe.subheader(f'Valor Total = {valor_total}')
 
-            coluna = 0
+                df_contratos_fc['Mês'] = pd.Categorical(df_contratos_fc['Mês'], categories=ordem_meses, ordered=True)
 
-else:
+                df_tabela = df_contratos_fc.copy()
 
-    for status in sorted(df_contratos_fc['Status'].dropna().unique()):
+                df_tabela['Valor de Venda'] = df_tabela['Valor de Venda'].apply(lambda x: format_currency(x, 'BRL', locale='pt_BR'))
 
-        with row3[coluna]:
+                container_dataframe.dataframe(df_tabela[df_tabela['Status']==status][['Cliente', 'Mês', 'Valor de Venda']].sort_values(by='Mês'), hide_index=True)
 
-            container_dataframe = st.container(border=True)
+            if coluna != 2:
 
-            container_dataframe.subheader(status)
+                coluna+=1
 
-            valor_total = format_currency(df_contratos_fc[df_contratos_fc['Status']==status]['Valor de Venda'].sum(), 'BRL', locale='pt_BR')
+            else:
 
-            container_dataframe.subheader(f'Valor Total = {valor_total}')
-
-            df_contratos_fc['Mês'] = pd.Categorical(df_contratos_fc['Mês'], categories=ordem_meses, ordered=True)
-
-            df_tabela = df_contratos_fc.copy()
-
-            df_tabela['Valor de Venda'] = df_tabela['Valor de Venda'].apply(lambda x: format_currency(x, 'BRL', locale='pt_BR'))
-
-            container_dataframe.dataframe(df_tabela[df_tabela['Status']==status][['Cliente', 'Mês', 'Valor de Venda']].sort_values(by='Mês'), hide_index=True)
-
-        if coluna != 2:
-
-            coluna+=1
-
-        else:
-
-            coluna = 0
+                coluna = 0
 
