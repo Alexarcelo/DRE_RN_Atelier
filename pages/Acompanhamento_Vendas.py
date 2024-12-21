@@ -427,7 +427,7 @@ elif analise == 'Meta Faturamento':
                                                             else st.session_state.patamar_comissoes_virgilio[2] if x<st.session_state.patamar_comissoes_virgilio[2]
                                                             else st.session_state.patamar_comissoes_virgilio[3])
 
-    with row_2_5[0]:
+    with row4[0]:
 
         grafico_duas_barras(df_metas, 'mes/ano', 'Virgílio', 'Meta', 'Valor de Venda', 'Venda Atual', 'Meta vs Vendas')
 
@@ -446,50 +446,52 @@ elif analise == 'Meta Faturamento':
 
     if filtro_mes:
 
-        st.subheader(f"*Sua comissão atual é {df_comissão_atual['Comissão R$ Virgílio'].iloc[0]}*")
+        with row4[1]:
 
-        venda_atual = df_metas['Valor de Venda'].iloc[0]
+            st.subheader(f"*Sua comissão atual é {df_comissão_atual['Comissão R$ Virgílio'].iloc[0]}*")
 
-        if venda_atual>=st.session_state.patamar_comissoes_virgilio[3]:
+            venda_atual = df_metas['Valor de Venda'].iloc[0]
 
-            st.subheader('Você atingiu o patamar máximo de comissionamento!!')
+            if venda_atual>=st.session_state.patamar_comissoes_virgilio[3]:
 
-        elif venda_atual>=st.session_state.patamar_comissoes_virgilio[2]:
+                st.subheader('Você atingiu o patamar máximo de comissionamento!!')
 
-            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[3] - venda_atual
+            elif venda_atual>=st.session_state.patamar_comissoes_virgilio[2]:
 
-            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+                valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[3] - venda_atual
 
-            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[3]*st.session_state.patamar_comissoes_perc_virgilio[3]
+                st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
 
-            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
+                valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[3]*st.session_state.patamar_comissoes_perc_virgilio[3]
 
-        elif venda_atual>=st.session_state.patamar_comissoes_virgilio[1]:
+                st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
 
-            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[2] - venda_atual
+            elif venda_atual>=st.session_state.patamar_comissoes_virgilio[1]:
 
-            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+                valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[2] - venda_atual
 
-            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[2]*st.session_state.patamar_comissoes_perc_virgilio[2]
+                st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
 
-            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
+                valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[2]*st.session_state.patamar_comissoes_perc_virgilio[2]
 
-        elif venda_atual>=st.session_state.patamar_comissoes_virgilio[0]:
+                st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
 
-            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[1] - venda_atual
+            elif venda_atual>=st.session_state.patamar_comissoes_virgilio[0]:
 
-            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+                valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[1] - venda_atual
 
-            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[1]*st.session_state.patamar_comissoes_perc_virgilio[1]
+                st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
 
-            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
+                valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[1]*st.session_state.patamar_comissoes_perc_virgilio[1]
 
-        else:
+                st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
 
-            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[0] - venda_atual
+            else:
 
-            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+                valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[0] - venda_atual
 
-            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[0]*st.session_state.patamar_comissoes_perc_virgilio[0]
+                st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
 
-            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
+                valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[0]*st.session_state.patamar_comissoes_perc_virgilio[0]
+
+                st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
