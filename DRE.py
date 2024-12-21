@@ -355,7 +355,7 @@ def grafico_linha_percentual(referencia, eixo_x, eixo_y_1, ref_1_label, titulo):
 
 def puxar_aba_simples(id_gsheet, nome_aba, nome_df):
 
-    project_id = "atelie"
+    project_id = "atelie-445321"
     secret_id = "cred-luck-aracaju"
     secret_client = secretmanager.SecretManagerServiceClient()
     secret_name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
