@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 from notion_client import Client
 from babel.numbers import format_currency
+import gspread
+import matplotlib.pyplot as plt
+from google.cloud import secretmanager 
+import json
+from google.oauth2.service_account import Credentials
 
 def puxar_dados_contratos():
     notion = Client(auth=st.session_state.ntn_token)
@@ -135,6 +140,51 @@ def puxar_dados_ficha_clientes():
 
     return df
 
+def puxar_aba_simples(id_gsheet, nome_aba, nome_df):
+
+    project_id = "grupoluck"
+    secret_id = "cred-luck-aracaju"
+    secret_client = secretmanager.SecretManagerServiceClient()
+    secret_name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+    response = secret_client.access_secret_version(request={"name": secret_name})
+    secret_payload = response.payload.data.decode("UTF-8")
+    credentials_info = json.loads(secret_payload)
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+    client = gspread.authorize(credentials)
+
+    spreadsheet = client.open_by_key(id_gsheet)
+    
+    sheet = spreadsheet.worksheet(nome_aba)
+
+    sheet_data = sheet.get_all_values()
+
+    st.session_state[nome_df] = pd.DataFrame(sheet_data[1:], columns=sheet_data[0])
+
+def grafico_duas_barras(referencia, eixo_x, eixo_y_1, ref_1_label, eixo_y_2, ref_2_label, titulo):
+
+    referencia[eixo_x] = referencia[eixo_x].astype(str)
+    
+    fig, ax = plt.subplots(figsize=(15, 8))
+
+    width = 0.6
+    
+    plt.bar(referencia[eixo_x], referencia[eixo_y_1], width, label = ref_1_label, alpha = 0.3, color = 'red', edgecolor='black')
+    ax.bar(referencia[eixo_x], referencia[eixo_y_2], width, label = ref_2_label, alpha = 1, color = 'gray', edgecolor='black')
+    
+    for i in range(len(referencia[eixo_x])):
+        texto = format_currency(referencia[eixo_y_1][i], 'BRL', locale='pt_BR')
+        plt.text(referencia[eixo_x][i], referencia[eixo_y_1][i], texto, ha='center', va='bottom')
+    for i in range(len(referencia[eixo_x])):
+        texto_2 = format_currency(referencia[eixo_y_2][i], 'BRL', locale='pt_BR')
+        plt.text(referencia[eixo_x][i], referencia[eixo_y_2][i], texto_2, ha='center', va='bottom')
+
+    plt.title(titulo, fontsize=30)
+    plt.xlabel('Mês/Ano')
+    ax.legend(loc='lower right', bbox_to_anchor=(1.2, 1))
+    st.pyplot(fig)
+    plt.close(fig)
+
 st.set_page_config(layout='wide')
 
 st.session_state.ntn_token = 'ntn_v1788076170b9OMfJeP6zHSAlPk4Gw8jryN0ujcV0KyfSc'
@@ -143,35 +193,15 @@ st.session_state.id_contratos = 'c344260990624865b81b5d3686262cdd'
 
 st.session_state.id_ficha_clientes = 'e9bc3962a56b410483dd2a9fb19368ee'
 
+st.session_state.id_gsheet = '1P9g1KZKJ2h2SbWliHB1FEzf1KmST7Q-EKr3TLICVJK8'
+
+st.session_state.patamar_comissoes_virgilio = [300000, 330000, 400000, 450000]
+
+st.session_state.patamar_comissoes_perc_virgilio = [0.010, 0.011, 0.015, 0.018]
+
+# Puxando dados do Notion
+
 if not 'df_contratos' in st.session_state:
-
-    with st.spinner('Puxando dados do Notion...'):
-
-        st.session_state.df_contratos = puxar_dados_contratos()
-
-        st.session_state.df_contratos = st.session_state.df_contratos[~pd.isna(st.session_state.df_contratos[' '])].reset_index(drop=True)
-
-        st.session_state.df_ficha_clientes = puxar_dados_ficha_clientes()
-
-st.title('Acompanhamento de Vendas | RN Atelier - OMIE')
-
-st.divider()    
-
-row1 = st.columns(3) 
-
-row2 = st.columns(3)
-
-st.divider()  
-
-row_2_5 = st.columns(1)
-
-row3 = st.columns(3)
-
-with row1[0]:
-
-    atualizar_notion = st.button('Atualizar Dados Notion')
-
-if atualizar_notion:
 
     with st.spinner('Puxando dados do Notion...'):
 
@@ -181,31 +211,123 @@ if atualizar_notion:
 
         st.session_state.df_contratos['Cliente'] = st.session_state.df_contratos['Cliente'].str.strip()
 
+        st.session_state.df_contratos['ano'] = pd.to_datetime(st.session_state.df_contratos['Data de Contrato']).dt.year
+
+        st.session_state.df_contratos['ano'] = st.session_state.df_contratos['ano'].fillna(0).astype(int)
+
         st.session_state.df_ficha_clientes = puxar_dados_ficha_clientes()
 
         st.session_state.df_ficha_clientes['Cliente'] = st.session_state.df_ficha_clientes['Cliente'].str.strip()
 
-    df_contratos_fc = pd.merge(st.session_state.df_contratos[['Valor de Venda', 'Mês', 'Status', 'Cliente']], st.session_state.df_ficha_clientes, on='Cliente', how='left')
+# Puxando dados do Drive
 
-    # Filtrar Mês
+if not 'df_metas' in st.session_state:
 
-    with row2[0]:
+    with st.spinner('Puxando metas do Google Drive...'):
 
-        filtro_mes = st.multiselect('Filtrar Mês', sorted(df_contratos_fc['Mês'].dropna().unique()), default=None)
+        puxar_aba_simples(st.session_state.id_gsheet, 'BD - Metas', 'df_metas')
 
-        if filtro_mes:
+        lista_colunas_numero = ['ano', 'mes', 'Virgílio']
 
-            df_contratos_fc = df_contratos_fc[df_contratos_fc['Mês'].isin(filtro_mes)].reset_index(drop=True)
+        for coluna in lista_colunas_numero:
 
-    # Filtrar Status
+            st.session_state.df_metas[coluna] = pd.to_numeric(st.session_state.df_metas[coluna])
 
-    with row2[1]:
+st.title('Acompanhamento de Vendas | RN Atelier - OMIE')
 
-        filtro_status = st.multiselect('Filtrar Status', sorted(df_contratos_fc['Status'].dropna().unique()), default=None)
+st.divider()    
 
-        if filtro_status:
+row1 = st.columns(3) 
 
-            df_contratos_fc = df_contratos_fc[df_contratos_fc['Status'].isin(filtro_status)].reset_index(drop=True)
+row1_2 = st.columns(1)
+
+row2 = st.columns(3)
+
+st.divider()  
+
+row_2_5 = st.columns(1)
+
+row3 = st.columns(3)
+
+st.divider()
+
+row4 = st.columns(1)
+
+# Botão Atualizar Dados Notion
+
+with row1[0]:
+
+    atualizar_notion = st.button('Atualizar Dados Notion')
+
+    if atualizar_notion:
+
+        with st.spinner('Puxando dados do Notion...'):
+
+            st.session_state.df_contratos = puxar_dados_contratos()
+
+            st.session_state.df_contratos = st.session_state.df_contratos[~pd.isna(st.session_state.df_contratos['Cliente'])].reset_index(drop=True)
+
+            st.session_state.df_contratos['Cliente'] = st.session_state.df_contratos['Cliente'].str.strip()
+
+            st.session_state.df_contratos['ano'] = pd.to_datetime(st.session_state.df_contratos['Data de Contrato']).dt.year
+
+            st.session_state.df_contratos['ano'] = st.session_state.df_contratos['ano'].fillna(0).astype(int)
+
+            st.session_state.df_ficha_clientes = puxar_dados_ficha_clientes()
+
+            st.session_state.df_ficha_clientes['Cliente'] = st.session_state.df_ficha_clientes['Cliente'].str.strip()
+
+# Botão Atualizar Dados Drive
+
+with row1[1]:
+
+    atualizar_gsheet = st.button('Atualizar Metas Google Drive')
+
+    if atualizar_gsheet:
+
+        with st.spinner('Puxando metas do Google Drive...'):
+
+            puxar_aba_simples(st.session_state.id_gsheet, 'BD - Metas', 'df_metas')
+
+            lista_colunas_numero = ['ano', 'mes', 'Virgílio']
+
+            for coluna in lista_colunas_numero:
+
+                st.session_state.df_metas[coluna] = pd.to_numeric(st.session_state.df_metas[coluna])
+
+with row1_2[0]:
+
+    analise = st.radio('Análise', ['Vendas por Status', 'Meta Faturamento'], index=None)
+
+df_contratos_fc = pd.merge(st.session_state.df_contratos[['Valor de Venda', 'Mês', 'Status', 'Cliente', 'ano', 'Unidade']], st.session_state.df_ficha_clientes, on='Cliente', how='left')
+
+# Filtrar Mês
+
+with row2[0]:
+
+    filtro_mes = st.multiselect('Filtrar Mês', ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'], default=None)
+
+    if filtro_mes:
+
+        df_contratos_fc = df_contratos_fc[df_contratos_fc['Mês'].isin(filtro_mes)].reset_index(drop=True)
+
+    filtro_ano = st.multiselect('Filtrar Ano', sorted(st.session_state.df_contratos[st.session_state.df_contratos['ano']!=0]['ano'].dropna().unique()), default=None)
+
+    if filtro_ano:
+
+        df_contratos_fc = df_contratos_fc[df_contratos_fc['ano'].isin(filtro_ano)].reset_index(drop=True)
+
+# Filtrar Status
+
+with row2[1]:
+
+    filtro_status = st.multiselect('Filtrar Status', sorted(st.session_state.df_contratos['Status'].dropna().unique()), default=None)
+
+    if filtro_status:
+
+        df_contratos_fc = df_contratos_fc[df_contratos_fc['Status'].isin(filtro_status)].reset_index(drop=True)
+
+if analise == 'Vendas por Status':
 
     df_contratos_fc['Valor de Venda'] = df_contratos_fc['Valor de Venda'].fillna(0)
 
@@ -284,3 +406,90 @@ if atualizar_notion:
 
                 coluna = 0
 
+elif analise == 'Meta Faturamento':
+
+    df_metas = st.session_state.df_metas.copy()
+
+    dict_mes = {1:'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+
+    df_metas['Mês'] = df_metas['mes'].apply(lambda x: dict_mes[x])
+
+    df_metas['mes/ano'] = pd.to_datetime(df_metas['ano'].astype(str) + '-' + df_metas['mes'].astype(str)).dt.to_period('M')
+
+    df_vendas_mensal = df_contratos_fc.groupby(['ano', 'Mês'])['Valor de Venda'].sum().reset_index()
+
+    df_metas = pd.merge(df_metas, df_vendas_mensal, on=['ano', 'Mês'], how='left')
+
+    df_metas = df_metas[~pd.isna(df_metas['Valor de Venda'])].reset_index(drop=True)
+
+    df_metas['Virgílio'] = df_metas['Valor de Venda'].apply(lambda x: st.session_state.patamar_comissoes_virgilio[0] if x<st.session_state.patamar_comissoes_virgilio[0]
+                                                            else st.session_state.patamar_comissoes_virgilio[1] if x<st.session_state.patamar_comissoes_virgilio[1]
+                                                            else st.session_state.patamar_comissoes_virgilio[2] if x<st.session_state.patamar_comissoes_virgilio[2]
+                                                            else st.session_state.patamar_comissoes_virgilio[3])
+
+    with row_2_5[0]:
+
+        grafico_duas_barras(df_metas, 'mes/ano', 'Virgílio', 'Meta', 'Valor de Venda', 'Venda Atual', 'Meta vs Vendas')
+
+    st.header('Comissiômetro - Virgílio')
+
+    df_metas['Comissão % Virgílio'] = df_metas['Valor de Venda'].apply(lambda x: st.session_state.patamar_comissoes_perc_virgilio[3] if x>=st.session_state.patamar_comissoes_virgilio[3] 
+                                                                       else st.session_state.patamar_comissoes_perc_virgilio[2] if x>=st.session_state.patamar_comissoes_virgilio[2] 
+                                                                       else st.session_state.patamar_comissoes_perc_virgilio[1] if x>=st.session_state.patamar_comissoes_virgilio[1] 
+                                                                       else st.session_state.patamar_comissoes_perc_virgilio[0] if x>=st.session_state.patamar_comissoes_virgilio[0] else 0)
+    
+    df_metas['Comissão R$ Virgílio'] = df_metas['Comissão % Virgílio'] * df_metas['Valor de Venda']
+
+    df_comissão_atual = df_metas[['ano', 'Mês', 'Comissão R$ Virgílio']]
+
+    df_comissão_atual['Comissão R$ Virgílio'] = df_comissão_atual['Comissão R$ Virgílio'].apply(lambda x: format_currency(x, 'BRL', locale='pt_BR'))
+
+    if filtro_mes:
+
+        st.subheader(f"*Sua comissão atual é {df_comissão_atual['Comissão R$ Virgílio'].iloc[0]}*")
+
+        venda_atual = df_metas['Valor de Venda'].iloc[0]
+
+        if venda_atual>=st.session_state.patamar_comissoes_virgilio[3]:
+
+            st.subheader('Você atingiu o patamar máximo de comissionamento!!')
+
+        elif venda_atual>=st.session_state.patamar_comissoes_virgilio[2]:
+
+            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[3] - venda_atual
+
+            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+
+            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[3]*st.session_state.patamar_comissoes_perc_virgilio[3]
+
+            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
+
+        elif venda_atual>=st.session_state.patamar_comissoes_virgilio[1]:
+
+            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[2] - venda_atual
+
+            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+
+            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[2]*st.session_state.patamar_comissoes_perc_virgilio[2]
+
+            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
+
+        elif venda_atual>=st.session_state.patamar_comissoes_virgilio[0]:
+
+            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[1] - venda_atual
+
+            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+
+            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[1]*st.session_state.patamar_comissoes_perc_virgilio[1]
+
+            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
+
+        else:
+
+            valor_ate_proxima_meta = st.session_state.patamar_comissoes_virgilio[0] - venda_atual
+
+            st.subheader(f"*Ta faltando {format_currency(valor_ate_proxima_meta, 'BRL', locale='pt_BR')} pra atingir o próximo patamar de comissionamento!*")
+
+            valor_proxima_comissao = st.session_state.patamar_comissoes_virgilio[0]*st.session_state.patamar_comissoes_perc_virgilio[0]
+
+            st.subheader(f"*Quando bater esse valor, a comissão sobe pra {format_currency(valor_proxima_comissao, 'BRL', locale='pt_BR')}!*")
