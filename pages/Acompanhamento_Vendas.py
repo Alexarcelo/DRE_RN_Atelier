@@ -297,7 +297,7 @@ with row1[1]:
 
 with row1_2[0]:
 
-    analise = st.radio('Análise', ['Vendas por Status', 'Meta Faturamento'], index=None)
+    analise = st.radio('Análise', ['Vendas por Status', 'Comissiômetro'], index=None)
 
 df_contratos_fc = pd.merge(st.session_state.df_contratos[['Valor de Venda', 'Mês', 'Status', 'Cliente', 'ano', 'Unidade']], st.session_state.df_ficha_clientes, on='Cliente', how='left')
 
@@ -406,7 +406,7 @@ if analise == 'Vendas por Status':
 
                 coluna = 0
 
-elif analise == 'Meta Faturamento':
+elif analise == 'Comissiômetro':
 
     df_metas = st.session_state.df_metas.copy()
 
@@ -416,7 +416,7 @@ elif analise == 'Meta Faturamento':
 
     df_metas['mes/ano'] = pd.to_datetime(df_metas['ano'].astype(str) + '-' + df_metas['mes'].astype(str)).dt.to_period('M')
 
-    df_vendas_mensal = df_contratos_fc.groupby(['ano', 'Mês'])['Valor de Venda'].sum().reset_index()
+    df_vendas_mensal = df_contratos_fc[df_contratos_fc['Unidade']=='SP'].groupby(['ano', 'Mês'])['Valor de Venda'].sum().reset_index()
 
     df_metas = pd.merge(df_metas, df_vendas_mensal, on=['ano', 'Mês'], how='left')
 
@@ -430,8 +430,6 @@ elif analise == 'Meta Faturamento':
     with row4[0]:
 
         grafico_duas_barras(df_metas, 'mes/ano', 'Virgílio', 'Meta', 'Valor de Venda', 'Venda Atual', 'Meta vs Vendas')
-
-    st.header('Comissiômetro - Virgílio')
 
     df_metas['Comissão % Virgílio'] = df_metas['Valor de Venda'].apply(lambda x: st.session_state.patamar_comissoes_perc_virgilio[3] if x>=st.session_state.patamar_comissoes_virgilio[3] 
                                                                        else st.session_state.patamar_comissoes_perc_virgilio[2] if x>=st.session_state.patamar_comissoes_virgilio[2] 
