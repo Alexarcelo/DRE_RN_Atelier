@@ -310,8 +310,6 @@ def identificar_finais_de_semana(df_sugestao_agenda):
     df_sugestao_agenda['Dia da Semana'] = pd.to_datetime(df_sugestao_agenda['Data da Atividade']).dt.day_name()
     df_sugestao_agenda['Dia da Semana'] = df_sugestao_agenda['Dia da Semana'].map(dias_da_semana)
 
-    df_sugestao_agenda['Dia da Semana'] = df_sugestao_agenda['Dia da Semana'].apply(lambda x: '' if x not in ['Sábado', 'Domingo'] else x)
-
     return df_sugestao_agenda
 
 def identificar_disponibilidade_colaboradores(df_sugestao_agenda):
@@ -555,9 +553,7 @@ def expandir_datas(df, coluna_datas):
 
 def gerar_df_insercao():
 
-    df_insercao = st.session_state.df_esqueleto_sugestao[pd.notna(st.session_state.df_esqueleto_sugestao['Data da Atividade'])].sort_index(ascending=False).reset_index(drop=True)
-
-    df_insercao = expandir_datas(df_insercao, "Data da Atividade")
+    df_insercao = st.session_state.df_esqueleto_final[pd.notna(st.session_state.df_esqueleto_final['Data da Atividade'])].sort_index(ascending=False).reset_index(drop=True)
 
     df_insercao['Etapa Atual'] = 1
 
@@ -659,42 +655,6 @@ row1 = st.columns(5)
 
 if st.session_state.esqueleto_escolhido!='':
 
-    # Opção p/ alterar Colaborador de etapa
-
-    with row1[0]:
-
-        colaborador = st.selectbox('Colaborador', sorted(st.session_state.df_colaboradores['Colaborador'].unique()), index=None)
-
-        alterar_colaborador = st.button('Alterar Colaborador')
-
-        if alterar_colaborador and st.session_state.lista_index_escolhido:
-
-            st.session_state.df_esqueleto_escolhido.loc[st.session_state.lista_index_escolhido, 'Colaborador'] = colaborador
-
-    # Opção p/ alterar Data Específica de etapa
-
-    with row1[1]:
-
-        data_esp = st.date_input('Data Específica', value=None, format='DD/MM/YYYY')
-
-        alterar_data_esp = st.button('Alterar Data Específica')
-
-        if alterar_data_esp and st.session_state.lista_index_escolhido:
-
-            st.session_state.df_esqueleto_escolhido.loc[st.session_state.lista_index_escolhido, 'Data Esp'] = data_esp
-
-    # Opção p/ alterar Duração de etapa
-
-    with row1[2]:
-
-        duracao = st.number_input('Duração', value=None)
-
-        alterar_duracao = st.button('Alterar Duração')
-
-        if alterar_duracao and st.session_state.lista_index_escolhido:
-
-            st.session_state.df_esqueleto_escolhido.loc[st.session_state.lista_index_escolhido, 'Duração'] = duracao
-
     # Opção p/ visualizar esqueleto caso precise alterar algo nele depois de já ter gerado a sugestão da agenda
 
     with row1[3]:
@@ -718,6 +678,42 @@ if st.session_state.esqueleto_escolhido!='':
     # Plotagem de tabela de esqueleto
 
     if st.session_state.sugestao_gerada == False:
+
+        # Opção p/ alterar Colaborador de etapa
+
+        with row1[0]:
+
+            colaborador = st.selectbox('Colaborador', sorted(st.session_state.df_colaboradores['Colaborador'].unique()), index=None)
+
+            alterar_colaborador = st.button('Alterar Colaborador')
+
+            if alterar_colaborador and st.session_state.lista_index_escolhido:
+
+                st.session_state.df_esqueleto_escolhido.loc[st.session_state.lista_index_escolhido, 'Colaborador'] = colaborador
+
+        # Opção p/ alterar Data Específica de etapa
+
+        with row1[1]:
+
+            data_esp = st.date_input('Data Específica', value=None, format='DD/MM/YYYY')
+
+            alterar_data_esp = st.button('Alterar Data Específica')
+
+            if alterar_data_esp and st.session_state.lista_index_escolhido:
+
+                st.session_state.df_esqueleto_escolhido.loc[st.session_state.lista_index_escolhido, 'Data Esp'] = data_esp
+
+        # Opção p/ alterar Duração de etapa
+
+        with row1[2]:
+
+            duracao = st.number_input('Duração', value=None)
+
+            alterar_duracao = st.button('Alterar Duração')
+
+            if alterar_duracao and st.session_state.lista_index_escolhido:
+
+                st.session_state.df_esqueleto_escolhido.loc[st.session_state.lista_index_escolhido, 'Duração'] = duracao
 
         row_height = 32
         header_height = 56  
@@ -832,16 +828,54 @@ if st.session_state.esqueleto_escolhido!='':
 
                             data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index)
 
+        df_esqueleto_sugestao = expandir_datas(df_esqueleto_sugestao, "Data da Atividade")
+
+        df_esqueleto_sugestao = identificar_finais_de_semana(df_esqueleto_sugestao)
+
         st.session_state.df_esqueleto_sugestao = df_esqueleto_sugestao.reset_index(drop=True)
 
+        st.session_state.df_esqueleto_final = st.session_state.df_esqueleto_sugestao[pd.notna(st.session_state.df_esqueleto_sugestao['Data da Atividade'])]\
+            [['Data da Atividade', 'Dia da Semana', 'Data Esp', 'Duração', 'Colaborador', 'Etapa', 'Unidade SP ou JP', 'S.M. | P.P.']]
+        
+        st.session_state.df_esqueleto_final['Data da Atividade'] = pd.to_datetime(st.session_state.df_esqueleto_final['Data da Atividade'], errors='coerce').dt.strftime('%Y-%m-%d')
+        
+        st.session_state.df_esqueleto_final = st.session_state.df_esqueleto_final.sort_values(by='Data da Atividade').reset_index(drop=True)
+
 if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esqueleto_sugestao)>0 and st.session_state.sugestao_gerada == True:
+    
+    # Opção p/ alterar Data Específica de etapa
 
-    df_esqueleto_final = st.session_state.df_esqueleto_sugestao[pd.notna(st.session_state.df_esqueleto_sugestao['Data da Atividade'])]\
-        [['Data da Atividade', 'Data Esp', 'Duração', 'Colaborador', 'Etapa', 'Unidade SP ou JP']].sort_index(ascending=False).reset_index(drop=True)
+    with row1[0]:
 
-    container_dataframe = st.container()
+        data_esp_atividade = st.date_input('Data da Atividade', value=None, format='DD/MM/YYYY')
 
-    container_dataframe.dataframe(df_esqueleto_final, hide_index=True, use_container_width=True)
+        data_esp_atividade = pd.to_datetime(data_esp_atividade).strftime('%Y-%m-%d')
+
+        alterar_data_esp_atividade = st.button('Alterar Data da Atividade')
+
+        if alterar_data_esp_atividade and st.session_state.lista_index_escolhido_2:
+
+            st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Data da Atividade'] = data_esp_atividade
+    
+    row_height = 32
+    header_height = 56  
+    num_rows = len(st.session_state.df_esqueleto_final)
+    height_2 = header_height + (row_height * num_rows)  
+
+    gb_2 = GridOptionsBuilder.from_dataframe(st.session_state.df_esqueleto_final)
+    gb_2.configure_selection('multiple', use_checkbox=True)
+    gb_2.configure_grid_options(domLayout='autoHeight')
+    gridOptions_2 = gb_2.build()
+
+    grid_response_2 = AgGrid(st.session_state.df_esqueleto_final, gridOptions=gridOptions_2, enable_enterprise_modules=False, fit_columns_on_grid_load=True, height=height_2)
+
+    if not grid_response_2['selected_rows'] is None:
+
+        st.session_state.lista_index_escolhido_2 = grid_response_2['selected_rows'].reset_index()['index'].astype(int).tolist()
+
+    else:
+
+        st.session_state.lista_index_escolhido_2 = None
 
     inserir_agenda = st.button('Inserir Agenda')
 
