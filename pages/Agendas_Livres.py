@@ -100,6 +100,14 @@ if not 'id_agenda_producao' in st.session_state:
 
     st.session_state.id_agenda_producao = '14906a93e08a80348597e10090d82912'
 
+    st.session_state.id_agenda_feriados = '18106a93e08a806582e6e555764fe4f5'
+
+    st.session_state.id_agenda_ferias_pessoal = '18106a93e08a80399032f23bc9281676'
+
+    st.session_state.id_esqueletos_padroes = '18106a93e08a80e4b530f6396c1d1428'
+
+    st.session_state.id_colaboradores_producao = '18106a93e08a80c383a9cd4970aa36bb'
+
 # Puxando feriados, férias do pessoal, agenda produção, esqueletos padrões, colaboradores
 
 if not 'df_agenda_producao' in st.session_state:
