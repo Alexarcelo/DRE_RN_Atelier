@@ -116,6 +116,16 @@ if not 'df_agenda_producao' in st.session_state:
 
         criar_df_agenda_producao()
 
+dias_da_semana = {
+    'Monday': 'Segunda-feira',
+    'Tuesday': 'Terça-feira',
+    'Wednesday': 'Quarta-feira',
+    'Thursday': 'Quinta-feira',
+    'Friday': 'Sexta-feira',
+    'Saturday': 'Sábado',
+    'Sunday': 'Domingo'
+}
+
 st.title('Agendas Livres')
 
 st.divider()
@@ -148,7 +158,7 @@ with row1[2]:
 
     container_filtros = st.container(border=True)
 
-    filtrar_dias_da_semana = container_filtros.multiselect('Excluir Dias da Semana', ['Segunda feira', 'Terça feira', 'Quarta feira', 'Quinta feira', 'Sexta feira', 'Sábado', 'Domingo'], default=None)
+    filtrar_dias_da_semana = container_filtros.multiselect('Excluir Dias da Semana', ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'], default=None)
 
 if data_inicial and data_final and len(colaboradores) > 0:
 
@@ -176,7 +186,8 @@ if data_inicial and data_final and len(colaboradores) > 0:
 
                 df_agendas_livres[coluna] = df_agendas_livres[coluna].apply(lambda x: str(x)[:1] if x!='Livre' else x)
 
-    df_agendas_livres['Dia da Semana'] = pd.to_datetime(df_agendas_livres['Data da Atividade']).dt.day_name(locale='pt_BR')
+    df_agendas_livres['Dia da Semana'] = pd.to_datetime(df_agendas_livres['Data da Atividade']).dt.day_name()
+    df_agendas_livres['Dia da Semana'] = df_agendas_livres['Dia da Semana'].map(dias_da_semana)
 
     lista_colunas = ['Data da Atividade', 'Dia da Semana']
 
@@ -224,7 +235,8 @@ elif len(colaboradores) > 0:
 
                 df_agendas_livres[coluna] = df_agendas_livres[coluna].apply(lambda x: str(x)[:1] if x!='Livre' else x)
 
-    df_agendas_livres['Dia da Semana'] = pd.to_datetime(df_agendas_livres['Data da Atividade']).dt.day_name(locale='pt_BR')
+    df_agendas_livres['Dia da Semana'] = pd.to_datetime(df_agendas_livres['Data da Atividade']).dt.day_name()
+    df_agendas_livres['Dia da Semana'] = df_agendas_livres['Dia da Semana'].map(dias_da_semana)
 
     lista_colunas = ['Data da Atividade', 'Dia da Semana']
 
