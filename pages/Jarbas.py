@@ -297,7 +297,18 @@ def gerar_df_sugestao_agenda(data_entrega):
 
 def identificar_finais_de_semana(df_sugestao_agenda):
 
-    df_sugestao_agenda['Dia da Semana'] = pd.to_datetime(df_sugestao_agenda['Data da Atividade']).dt.day_name(locale='pt_BR')
+    dias_da_semana = {
+        'Monday': 'Segunda-feira',
+        'Tuesday': 'Terça-feira',
+        'Wednesday': 'Quarta-feira',
+        'Thursday': 'Quinta-feira',
+        'Friday': 'Sexta-feira',
+        'Saturday': 'Sábado',
+        'Sunday': 'Domingo'
+    }
+
+    df_sugestao_agenda['Dia da Semana'] = pd.to_datetime(df_sugestao_agenda['Data da Atividade']).dt.day_name()
+    df_sugestao_agenda['Dia da Semana'] = df_sugestao_agenda['Dia da Semana'].map(dias_da_semana)
 
     df_sugestao_agenda['Dia da Semana'] = df_sugestao_agenda['Dia da Semana'].apply(lambda x: '' if x not in ['Sábado', 'Domingo'] else x)
 
