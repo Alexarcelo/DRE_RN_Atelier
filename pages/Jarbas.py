@@ -849,7 +849,9 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
 
         data_esp_atividade = st.date_input('Data da Atividade', value=None, format='DD/MM/YYYY')
 
-        data_esp_atividade = pd.to_datetime(data_esp_atividade).strftime('%Y-%m-%d')
+        if data_esp_atividade:
+
+            data_esp_atividade = pd.to_datetime(data_esp_atividade).strftime('%Y-%m-%d')
 
         alterar_data_esp_atividade = st.button('Alterar Data da Atividade')
 
