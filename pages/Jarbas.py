@@ -841,3 +841,7 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
             df_insercao = gerar_df_insercao()
 
             inserir_dataframe_no_notion(df_insercao, st.session_state.id_agenda_producao, st.session_state.ntn_token)
+
+        with st.spinner('Puxando agenda produção atualizada...'):
+
+            criar_df_agenda_producao()
