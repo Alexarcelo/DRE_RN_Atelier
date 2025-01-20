@@ -584,8 +584,6 @@ st.set_page_config(layout='wide')
 
 if not 'id_agenda_producao' in st.session_state:
 
-    st.session_state.id_gsheet = '1JHO2I5_yH4lR-A8hH_mcJ6wo3uwvgbPSpkL6rYuKvc0'
-
     st.session_state.ntn_token = 'ntn_v1788076170b9OMfJeP6zHSAlPk4Gw8jryN0ujcV0KyfSc'
 
     st.session_state.id_agenda_producao = '14906a93e08a80348597e10090d82912'
