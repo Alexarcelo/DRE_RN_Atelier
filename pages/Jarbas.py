@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from notion_client import Client
 from st_aggrid import AgGrid, GridOptionsBuilder
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 def puxar_feriados():
     notion = Client(auth=st.session_state.ntn_token)
@@ -450,17 +450,27 @@ def atribuir_data_especifica_colaborador_adm(ferias_colaborador, df_esqueleto_su
 
 def atribuir_data_etapa_colaborador_adm(ferias_colaborador, df_esqueleto_sugestao, index, data_etapa):
 
-    if ferias_colaborador=='':
+    while data_etapa>=date.today()+timedelta(days=1):
 
-        df_esqueleto_sugestao.at[index, 'Data da Atividade'] = data_etapa
+        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador)
 
-        return data_etapa, df_esqueleto_sugestao
+        if not dia_da_semana in ['Sábado', 'Domingo'] and ((pd.isna(feriado)) or (pd.notna(feriado) and local_feriado!=unidade)) and ferias_colaborador=='':
+
+            df_esqueleto_sugestao.at[index, 'Data da Atividade'] = data_etapa
+
+            break
+
+        data_etapa-=timedelta(days=1)
+
+    if data_etapa<date.today()+timedelta(days=1):
+
+        st.error(f'Não consegui encontrar datas disponíveis para o colaborador {colaborador} executar a etapa {etapa} completamente')
+
+        st.stop()
 
     else:
 
-        st.error(f"O colaborador {colaborador} está de férias em {data_etapa.strftime('%d/%m/%Y')}")
-
-        st.stop()
+        return data_etapa, df_esqueleto_sugestao
 
 def atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index):
 
@@ -836,6 +846,8 @@ if st.session_state.esqueleto_escolhido!='':
 
         df_esqueleto_sugestao = identificar_finais_de_semana(df_esqueleto_sugestao)
 
+        st.session_state.df_sugestao_agenda = df_sugestao_agenda.copy()
+
         st.session_state.df_esqueleto_sugestao = df_esqueleto_sugestao.reset_index(drop=True)
 
         st.session_state.df_esqueleto_final = st.session_state.df_esqueleto_sugestao[pd.notna(st.session_state.df_esqueleto_sugestao['Data da Atividade'])]\
@@ -853,15 +865,99 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
 
         data_esp_atividade = st.date_input('Data da Atividade', value=None, format='DD/MM/YYYY')
 
-        if data_esp_atividade:
-
-            data_esp_atividade = pd.to_datetime(data_esp_atividade).strftime('%Y-%m-%d')
-
         alterar_data_esp_atividade = st.button('Alterar Data da Atividade')
 
         if alterar_data_esp_atividade and st.session_state.lista_index_escolhido_2:
 
-            st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Data da Atividade'] = data_esp_atividade
+            if not st.session_state.colaborador_escolhido in st.session_state.df_colaboradores['Colaborador'].unique():
+
+                disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, data_esp_atividade, 
+                                                                                                                                       st.session_state.colaborador_escolhido)
+                
+                if dia_da_semana in ['Sábado', 'Domingo']:
+
+                    st.error('A data escolhida é sábado ou domingo')
+
+                elif ferias_colaborador!='':
+
+                    st.error('O colaborador está de férias na data escolhida')
+
+                elif pd.notna(feriado):
+
+                    st.error('A data escolhida é um feriado')
+
+                if data_esp_atividade:
+
+                    data_esp_atividade = pd.to_datetime(data_esp_atividade).strftime('%Y-%m-%d')
+
+                st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Data da Atividade'] = data_esp_atividade
+
+                st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Dia da Semana'] = dia_da_semana
+
+            else:
+
+                disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, data_esp_atividade, 
+                                                                                                                                       st.session_state.colaborador_escolhido)
+                
+                if dia_da_semana in ['Sábado', 'Domingo']:
+
+                    st.error('A data escolhida é sábado ou domingo')
+
+                elif ferias_colaborador!='':
+
+                    st.error('O colaborador está de férias na data escolhida')
+
+                elif pd.notna(feriado):
+
+                    st.error('A data escolhida é um feriado')
+
+                elif disponibilidade_colaborador>=1:
+
+                    st.error('O colaborador já tem uma atividade na data escolhida')
+
+                if data_esp_atividade:
+
+                    data_esp_atividade = pd.to_datetime(data_esp_atividade).strftime('%Y-%m-%d')
+
+                st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Data da Atividade'] = data_esp_atividade
+
+                st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Dia da Semana'] = dia_da_semana
+
+    with row1[1]:
+
+        colaborador_esp_atividade = st.selectbox('Colaborador', sorted(st.session_state.df_colaboradores['Colaborador'].unique()), index=None)
+
+        alterar_colaborador_esp_atividade = st.button('Alterar Colaborador')
+
+        if alterar_colaborador_esp_atividade and st.session_state.lista_index_escolhido_2:
+
+            if not colaborador_esp_atividade in st.session_state.df_colaboradores['Colaborador'].unique():
+
+                disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, 
+                                                                                                                                       st.session_state.data_escolhida, 
+                                                                                                                                       colaborador_esp_atividade)
+                
+                if ferias_colaborador!='':
+
+                    st.error('O colaborador está de férias na data da atividade')
+
+                st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Colaborador'] = colaborador_esp_atividade
+
+            else:
+
+                disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, 
+                                                                                                                                       st.session_state.data_escolhida, 
+                                                                                                                                       colaborador_esp_atividade)
+                
+                if ferias_colaborador!='':
+
+                    st.error('O colaborador está de férias na data da atividade')
+
+                elif disponibilidade_colaborador>=1:
+
+                    st.error('O colaborador já tem uma atividade na data da atividade')
+
+                st.session_state.df_esqueleto_final.loc[st.session_state.lista_index_escolhido_2, 'Colaborador'] = colaborador_esp_atividade
     
     row_height = 32
     header_height = 56  
@@ -869,7 +965,7 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
     height_2 = header_height + (row_height * num_rows)  
 
     gb_2 = GridOptionsBuilder.from_dataframe(st.session_state.df_esqueleto_final)
-    gb_2.configure_selection('multiple', use_checkbox=True)
+    gb_2.configure_selection('single')
     gb_2.configure_grid_options(domLayout='autoHeight')
     gridOptions_2 = gb_2.build()
 
@@ -879,9 +975,19 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
 
         st.session_state.lista_index_escolhido_2 = grid_response_2['selected_rows'].reset_index()['index'].astype(int).tolist()
 
+        st.session_state.colaborador_escolhido = grid_response_2['selected_rows'].reset_index()['Colaborador'].iloc[0]
+
+        st.session_state.data_escolhida = grid_response_2['selected_rows'].reset_index()['Data da Atividade'].iloc[0]
+
+        st.session_state.data_escolhida = datetime.strptime(st.session_state.data_escolhida, '%Y-%m-%d').date()
+
     else:
 
         st.session_state.lista_index_escolhido_2 = None
+
+        st.session_state.colaborador_escolhido = None
+
+        st.session_state.data_escolhida = None
 
     inserir_agenda = st.button('Inserir Agenda')
 
