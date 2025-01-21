@@ -229,6 +229,8 @@ def puxar_esqueletos_padroes():
             )
             row["Duração"] = properties["Duração"]["number"]
 
+            row["Sequência"] = properties["Sequência"]["number"]
+
             data.append(row)
 
         # Controle de paginação
@@ -647,7 +649,9 @@ if esqueleto_padrao and esqueleto_padrao!=st.session_state.esqueleto_escolhido:
 
     st.session_state.sugestao_gerada = False
 
-    st.session_state.df_esqueleto_escolhido = st.session_state.df_esqueletos_padroes[st.session_state.df_esqueletos_padroes['Tipo de Vestido']==esqueleto_padrao].reset_index(drop=True)
+    st.session_state.df_esqueleto_escolhido = st.session_state.df_esqueletos_padroes[st.session_state.df_esqueletos_padroes['Tipo de Vestido']==esqueleto_padrao].sort_values(by='Sequência').reset_index(drop=True)
+
+    st.session_state.df_esqueleto_escolhido = st.session_state.df_esqueleto_escolhido.drop(columns=['Sequência'])
 
 row1 = st.columns(5)
 
