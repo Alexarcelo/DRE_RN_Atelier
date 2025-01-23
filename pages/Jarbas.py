@@ -320,7 +320,7 @@ def identificar_disponibilidade_colaboradores(df_sugestao_agenda):
 
         if colaborador in st.session_state.df_colaboradores['Colaborador'].unique():
 
-            df_agenda_colaborador = st.session_state.df_agenda_producao[st.session_state.df_agenda_producao['Colaborador']==colaborador][['Data da Atividade', 'Atividade']].reset_index(drop=True)
+            df_agenda_colaborador = st.session_state.df_agenda_producao[(st.session_state.df_agenda_producao['Colaborador']==colaborador) & (st.session_state.df_agenda_producao['Atividade']!='Tirar Medidas')][['Data da Atividade', 'Atividade']].reset_index(drop=True)
 
             df_agenda_colaborador = df_agenda_colaborador.groupby('Data da Atividade')['Atividade'].count().reset_index()
 
