@@ -166,7 +166,8 @@ if data_inicial and data_final and len(colaboradores) > 0:
 
     for colaborador in colaboradores:
 
-        df_colaborador = st.session_state.df_agenda_producao[st.session_state.df_agenda_producao['Colaborador'] == colaborador].reset_index(drop=True)
+        df_colaborador = st.session_state.df_agenda_producao[(st.session_state.df_agenda_producao['Colaborador']==colaborador) & 
+                                                             (st.session_state.df_agenda_producao['Atividade']!='Tirar Medidas')].reset_index(drop=True)
 
         df_colaborador = df_colaborador.groupby('Data da Atividade')['Colaborador'].count().reset_index()
 
