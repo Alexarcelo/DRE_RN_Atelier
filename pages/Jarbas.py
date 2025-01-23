@@ -476,7 +476,7 @@ def atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_e
 
     loops = duracao-1
 
-    while data_etapa>=date.today()+timedelta(days=1) and loops>0:
+    while data_etapa>date.today()+timedelta(days=1) and loops>0:
 
         data_etapa -= timedelta(days=1)
 
@@ -504,7 +504,7 @@ def atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_e
 
 def atribuir_data_etapa_1_colaborador_producao(data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index):
 
-    while data_etapa>=date.today()+timedelta(days=1):
+    while data_etapa>date.today()+timedelta(days=1):
 
         data_etapa-=timedelta(days=1)
 
