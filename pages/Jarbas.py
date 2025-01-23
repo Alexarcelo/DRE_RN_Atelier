@@ -388,33 +388,41 @@ def coletar_infos(df_esqueleto_sugestao, index):
 
     return etapa, colaborador, duracao, data_especifica, unidade
 
-def colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador):
+def colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador, etapa):
 
-    df_data_etapa = df_sugestao_agenda[(df_sugestao_agenda['Data da Atividade']==data_etapa)]
+    if data_etapa<=date.today():
 
-    if colaborador in df_sugestao_agenda.columns:
+        st.error(f'Não consegui encontrar datas disponíveis para o colaborador {colaborador} executar a etapa {etapa} completamente')
 
-        disponibilidade_colaborador = df_data_etapa[colaborador].iloc[0]
-
-    else:
-        
-        disponibilidade_colaborador = 0
-
-    dia_da_semana = df_data_etapa['Dia da Semana'].iloc[0]
-
-    feriado = df_data_etapa['Feriados'].iloc[0]
-
-    local_feriado = df_data_etapa['Local'].iloc[0]
-
-    if f'Férias {colaborador}' in df_sugestao_agenda.columns:
-
-        ferias_colaborador = df_data_etapa[f'Férias {colaborador}'].iloc[0]
+        st.stop()
 
     else:
 
-        ferias_colaborador = ''
-
-    return disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador
+        df_data_etapa = df_sugestao_agenda[(df_sugestao_agenda['Data da Atividade']==data_etapa)]
+    
+        if colaborador in df_sugestao_agenda.columns:
+    
+            disponibilidade_colaborador = df_data_etapa[colaborador].iloc[0]
+    
+        else:
+            
+            disponibilidade_colaborador = 0
+    
+        dia_da_semana = df_data_etapa['Dia da Semana'].iloc[0]
+    
+        feriado = df_data_etapa['Feriados'].iloc[0]
+    
+        local_feriado = df_data_etapa['Local'].iloc[0]
+    
+        if f'Férias {colaborador}' in df_sugestao_agenda.columns:
+    
+            ferias_colaborador = df_data_etapa[f'Férias {colaborador}'].iloc[0]
+    
+        else:
+    
+            ferias_colaborador = ''
+    
+        return disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador
 
 def atribuir_data_especifica_colaborador_producao(disponibilidade_colaborador, ferias_colaborador, df_esqueleto_sugestao, index, data_especifica, data_etapa):
 
@@ -448,11 +456,11 @@ def atribuir_data_especifica_colaborador_adm(ferias_colaborador, df_esqueleto_su
 
         st.stop()
 
-def atribuir_data_etapa_colaborador_adm(ferias_colaborador, df_esqueleto_sugestao, index, data_etapa):
+def atribuir_data_etapa_colaborador_adm(ferias_colaborador, df_esqueleto_sugestao, index, data_etapa, etapa):
 
     while data_etapa>=date.today()+timedelta(days=1):
 
-        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador)
+        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador, etapa)
 
         if not dia_da_semana in ['Sábado', 'Domingo'] and ((pd.isna(feriado)) or (pd.notna(feriado) and local_feriado!=unidade)) and ferias_colaborador=='':
 
@@ -472,7 +480,7 @@ def atribuir_data_etapa_colaborador_adm(ferias_colaborador, df_esqueleto_sugesta
 
         return data_etapa, df_esqueleto_sugestao
 
-def atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index):
+def atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index, etapa):
 
     loops = duracao-1
 
@@ -480,7 +488,7 @@ def atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_e
 
         data_etapa -= timedelta(days=1)
 
-        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador)      
+        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador, etapa)      
 
         if disponibilidade_colaborador<1 and not dia_da_semana in ['Sábado', 'Domingo'] and ((pd.isna(feriado)) or (pd.notna(feriado) and local_feriado!=unidade)) and ferias_colaborador=='':
 
@@ -502,13 +510,13 @@ def atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_e
 
         return data_etapa, df_esqueleto_sugestao
 
-def atribuir_data_etapa_1_colaborador_producao(data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index):
+def atribuir_data_etapa_1_colaborador_producao(data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index, etapa):
 
     while data_etapa>date.today()+timedelta(days=1):
 
         data_etapa-=timedelta(days=1)
 
-        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador)
+        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador, etapa)
 
         if disponibilidade_colaborador<1 and not dia_da_semana in ['Sábado', 'Domingo'] and ((pd.isna(feriado)) or (pd.notna(feriado) and local_feriado!=unidade)) and ferias_colaborador=='':
 
@@ -811,7 +819,7 @@ if st.session_state.esqueleto_escolhido!='':
 
                 if data_especifica!='' and pd.notna(data_especifica) and data_especifica <= data_etapa and colaborador in st.session_state.df_colaboradores['Colaborador'].unique():
 
-                    disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_especifica, colaborador)
+                    disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_especifica, colaborador, etapa)
 
                     data_etapa, df_esqueleto_sugestao = atribuir_data_especifica_colaborador_producao(disponibilidade_colaborador, ferias_colaborador, df_esqueleto_sugestao, index, data_especifica, 
                                                                                                     data_etapa)
@@ -820,13 +828,13 @@ if st.session_state.esqueleto_escolhido!='':
 
                     if duracao>1:
 
-                        data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index)
+                        data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index, etapa)
 
                 # Quando tem data específica possível pra etapa e o colaborador não é da produção
 
                 elif data_especifica!='' and pd.notna(data_especifica) and data_especifica <= data_etapa and not colaborador in st.session_state.df_colaboradores['Colaborador'].unique():
 
-                    disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_especifica, colaborador)
+                    disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_especifica, colaborador, etapa)
 
                     data_etapa, df_esqueleto_sugestao = atribuir_data_especifica_colaborador_adm(ferias_colaborador, df_esqueleto_sugestao, index, data_especifica, data_etapa)
 
@@ -836,17 +844,17 @@ if st.session_state.esqueleto_escolhido!='':
 
                     if not colaborador in st.session_state.df_colaboradores['Colaborador'].unique():
 
-                        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador)
+                        disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(df_sugestao_agenda, data_etapa, colaborador, etapa)
 
-                        data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_colaborador_adm(ferias_colaborador, df_esqueleto_sugestao, index, data_etapa)
+                        data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_colaborador_adm(ferias_colaborador, df_esqueleto_sugestao, index, data_etapa, etapa)
 
                     else:
 
-                        data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_1_colaborador_producao(data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index)
+                        data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_1_colaborador_producao(data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index, etapa)
 
                         if duracao>1:
 
-                            data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index)
+                            data_etapa, df_esqueleto_sugestao = atribuir_data_etapa_duracao_maior_que_1_colaborador_producao(duracao, data_etapa, df_sugestao_agenda, colaborador, df_esqueleto_sugestao, index, etapa)
 
         df_esqueleto_sugestao = expandir_datas(df_esqueleto_sugestao, "Data da Atividade")
 
@@ -878,7 +886,7 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
             if not st.session_state.colaborador_escolhido in st.session_state.df_colaboradores['Colaborador'].unique():
 
                 disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, data_esp_atividade, 
-                                                                                                                                       st.session_state.colaborador_escolhido)
+                                                                                                                                       st.session_state.colaborador_escolhido, st.session_state.etapa)
                 
                 if dia_da_semana in ['Sábado', 'Domingo']:
 
@@ -903,7 +911,7 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
             else:
 
                 disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, data_esp_atividade, 
-                                                                                                                                       st.session_state.colaborador_escolhido)
+                                                                                                                                       st.session_state.colaborador_escolhido, st.session_state.etapa)
                 
                 if dia_da_semana in ['Sábado', 'Domingo']:
 
@@ -941,7 +949,8 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
 
                 disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, 
                                                                                                                                        st.session_state.data_escolhida, 
-                                                                                                                                       colaborador_esp_atividade)
+                                                                                                                                       colaborador_esp_atividade, 
+                                                                                                                                       st.session_state.etapa)
                 
                 if ferias_colaborador!='':
 
@@ -953,7 +962,8 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
 
                 disponibilidade_colaborador, dia_da_semana, feriado, local_feriado, ferias_colaborador = colher_parametros_verificacao(st.session_state.df_sugestao_agenda, 
                                                                                                                                        st.session_state.data_escolhida, 
-                                                                                                                                       colaborador_esp_atividade)
+                                                                                                                                       colaborador_esp_atividade, 
+                                                                                                                                       st.session_state.etapa)
                 
                 if ferias_colaborador!='':
 
@@ -987,6 +997,8 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
 
         st.session_state.data_escolhida = datetime.strptime(st.session_state.data_escolhida, '%Y-%m-%d').date()
 
+        st.session_state.etapa = grid_response_2['selected_rows'].reset_index()['Atividade'].iloc[0]
+
     else:
 
         st.session_state.lista_index_escolhido_2 = None
@@ -994,6 +1006,8 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
         st.session_state.colaborador_escolhido = None
 
         st.session_state.data_escolhida = None
+
+        st.session_state.etapa = None
 
     inserir_agenda = st.button('Inserir Agenda')
 
