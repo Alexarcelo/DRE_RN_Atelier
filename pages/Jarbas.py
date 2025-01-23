@@ -675,9 +675,15 @@ if st.session_state.esqueleto_escolhido!='':
 
         visualizar_esqueleto = st.button('Visualizar Esqueleto')
 
-    if visualizar_esqueleto:
+        if visualizar_esqueleto:
+    
+            st.session_state.sugestao_gerada = False
 
-        st.session_state.sugestao_gerada = False
+        apagar_etapa = st.button('Apagar Etapas Selecionadas')
+
+        if apagar_etapa and st.session_state.lista_index_escolhido:
+
+            st.session_state.df_esqueleto_escolhido = st.session_state.df_esqueleto_escolhido.drop(index=st.session_state.lista_index_escolhido).reset_index(drop=True)
 
     # Botão de sugerir agenda já aqui porque se o usuário apertar nele, é pra desaparecer o esqueleto
 
@@ -685,9 +691,9 @@ if st.session_state.esqueleto_escolhido!='':
 
         sugerir_agenda = st.button('Sugerir Agenda')
 
-    if sugerir_agenda and cliente and data_entrega:
-
-        st.session_state.sugestao_gerada = True
+        if sugerir_agenda and cliente and data_entrega:
+    
+            st.session_state.sugestao_gerada = True
 
     # Plotagem de tabela de esqueleto
 
