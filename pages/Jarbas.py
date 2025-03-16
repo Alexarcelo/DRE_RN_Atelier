@@ -575,7 +575,7 @@ def gerar_df_insercao():
 
     df_insercao = st.session_state.df_esqueleto_final[pd.notna(st.session_state.df_esqueleto_final['Data da Atividade'])].sort_index(ascending=False).reset_index(drop=True)
 
-    df_insercao['Etapa Atual'] = 1
+    df_insercao['Etapa Atual'] = df_insercao['Duração']
 
     df_insercao['Etapas Totais'] = df_insercao['Duração']
 
@@ -595,7 +595,7 @@ def gerar_df_insercao():
 
         if duracao_2>1 and duracao_1==duracao_2 and etapa_1==etapa_2 and colaborador_1==colaborador_2:
 
-            df_insercao.at[index, 'Etapa Atual'] = df_insercao.at[index-1, 'Etapa Atual']+1
+            df_insercao.at[index, 'Etapa Atual'] = df_insercao.at[index-1, 'Etapa Atual']-1
 
     df_insercao = df_insercao.rename(columns={'Etapa': 'Atividade'})
 
@@ -1016,6 +1016,8 @@ if 'df_esqueleto_sugestao' in st.session_state and len(st.session_state.df_esque
         with st.spinner('Inserindo agenda no Notion...'):
 
             df_insercao = gerar_df_insercao()
+
+            st.stop()
 
             inserir_dataframe_no_notion(df_insercao, st.session_state.id_agenda_producao, st.session_state.ntn_token)
 
